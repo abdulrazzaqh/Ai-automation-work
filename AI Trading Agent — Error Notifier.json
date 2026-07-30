@@ -1,0 +1,108 @@
+{
+  "name": "AI Trading Agent — Error Notifier",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "b0e24d93-ef41-476c-8df0-b08738741f59",
+      "name": "Trading Agent Error",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "1",
+              "name": "subject",
+              "value": "={{ \"🚨 Trading Agent Error: \" + $json.workflow.name + \" failed at \" + $json.execution.lastNodeExecuted }}",
+              "type": "string"
+            },
+            {
+              "id": "2",
+              "name": "body",
+              "value": "={{ \"<h2>⚠️ AI Binance Trading Agent — Error Alert</h2><p><strong>Time:</strong> \" + $now.setZone(\"Asia/Karachi\").toFormat(\"yyyy-MM-dd HH:mm:ss\") + \" (PKT)</p><table border='1' cellpadding='6' cellspacing='0' style='border-collapse:collapse;width:100%;font-family:monospace'><tr><td><strong>Workflow</strong></td><td>\" + $json.workflow.name + \"</td></tr><tr><td><strong>Execution ID</strong></td><td>\" + $json.execution.id + \"</td></tr><tr><td><strong>Failed Node</strong></td><td>\" + $json.execution.lastNodeExecuted + \"</td></tr><tr><td><strong>Error Message</strong></td><td style='color:red'>\" + $json.error.message + \"</td></tr><tr><td><strong>Mode</strong></td><td>\" + $json.execution.mode + \"</td></tr></table><br><p>Please check your n8n instance for more details.</p><p style='color:orange'><strong>Note:</strong> The trading agent has paused for this cycle. It will retry automatically on the next 15-minute schedule.</p>\" }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "6a1de3eb-e953-4f70-a753-29a395f96287",
+      "name": "Format Error Details",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        224,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "abdulrazzaq767426@gmail.com",
+        "subject": "={{ $json.subject }}",
+        "message": "={{ $json.body }}",
+        "options": {
+          "appendAttribution": false,
+          "senderName": "n8n Trading Agent"
+        }
+      },
+      "id": "c31dda0f-c5fe-4983-af89-92c044d9a2dd",
+      "name": "Send Error Email",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        448,
+        0
+      ],
+      "webhookId": "fc3f3860-9215-42ab-b325-265d0c7b113a",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "Zu7zFfUSU7rnvlVP",
+          "name": "Gmail account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Trading Agent Error": {
+      "main": [
+        [
+          {
+            "node": "Format Error Details",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Error Details": {
+      "main": [
+        [
+          {
+            "node": "Send Error Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "6cdfb56a-4782-48fb-b290-adfe765ec46b",
+  "meta": {
+    "instanceId": "5e584c9d5669559353c17ac42554a5b5f115cbe7fac1fd96bf42014275391e34"
+  },
+  "nodeGroups": [],
+  "id": "A6Ieo3tEPaugOre6",
+  "tags": []
+}
