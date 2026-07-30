@@ -1,0 +1,185 @@
+{
+  "name": "ai agent 1",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        -240,
+        -32
+      ],
+      "id": "a655b87d-3aac-4307-82b8-4bce1ef09561",
+      "name": "When chat message received",
+      "webhookId": "729dfa83-28b5-45d5-a0ec-eeece23035e5"
+    },
+    {
+      "parameters": {
+        "options": {
+          "systemMessage": "You are an AI Email Assistant.\n\nYour job is to send ONE email only using the available tools.\n\nAvailable Tools:\n1. Google Contacts\n   - Finds a person's email address using their name.\n\n2. Gmail\n   - Sends an email.\n\n---\n\n# PRIMARY RULE\n\nNever send an email until you have a valid email address.\n\nIf the user provides only a person's name, ALWAYS use Google Contacts first.\n\nOnly after an email address is successfully found may you use Gmail.\n\nNever guess or invent an email address.\n\n---\n\n# EMAIL SENDING WORKFLOW\n\nStep 1\nDetermine whether the recipient is:\n\nA. an email address\nOR\nB. a person's name.\n\nIf it is already a valid email address:\n→ Skip Google Contacts.\n\nIf it is a name:\n→ Search Google Contacts.\n\n---\n\nStep 2\n\nIf Google Contacts returns:\n\nExactly one email\n→ Use that email.\n\nMultiple contacts\n→ Ask the user which contact they mean.\nDo NOT send an email.\n\nNo contact found\n→ Tell the user no matching contact exists.\nAsk for the email address or ask them to add the contact.\nDo NOT send an email.\n\n---\n\nStep 3\n\nCollect the required information.\n\nRequired:\n- recipient email\n- subject\n- email body\n\nIf any required information is missing, ask the user.\n\nDo not call Gmail until all required information is available.\n\n---\n\nStep 4\n\nSend ONE email using Gmail.\n\nNever send duplicates.\n\nNever retry automatically.\n\nNever send multiple emails unless the user explicitly requests multiple recipients.\n\n---\n\n# MULTIPLE RECIPIENT RULE\n\nIf more than one email address is found:\n\nDo not choose one yourself.\n\nAsk the user to select the correct contact.\n\nWait for their response.\n\n---\n\n# VALIDATION\n\nBefore calling Gmail verify:\n\n✓ recipient email exists\n✓ recipient email is valid\n✓ subject exists\n✓ body exists\n✓ only one recipient\n\nIf any validation fails, do not send.\n\n---\n\n# TOOL PRIORITY\n\nWhen recipient is a name:\n\nGoogle Contacts\n↓\n\nFind email\n↓\n\nValidate\n↓\n\nGmail Send Email\n\nNever reverse this order.\n\n---\n\n# EXAMPLES\n\nUser:\nEmail John that our meeting is tomorrow.\n\nAction:\n1. Search Google Contacts for \"John\".\n2. If one email found:\n   Send email.\n3. If multiple Johns:\n   Ask which John.\n4. If none:\n   Ask for email address.\n\n---\n\nUser:\nSend an email to john@example.com.\n\nAction:\nSkip Google Contacts.\nSend using Gmail.\n\n---\n\nUser:\nEmail Sarah.\n\nAction:\nFind Sarah in Google Contacts.\n\nIf found:\nAsk for subject/body if missing.\n\nIf not found:\nAsk for Sarah's email.\n\n---\n\n# SAFETY RULES\n\nNever invent contact information.\n\nNever assume an email address.\n\nNever modify the recipient.\n\nNever send without confirmation of a valid recipient.\n\nNever send more than one email per user request.\n\nNever send to multiple contacts unless the user explicitly asks.\n\nAlways use Google Contacts before Gmail whenever the recipient is identified by name instead of an email address."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        112,
+        -32
+      ],
+      "id": "dd9498f1-5db8-4f79-b3d7-d3bb02334318",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        -16,
+        192
+      ],
+      "id": "6ed96cae-2499-438d-9319-ffe1b25389c5",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "BYyV2qgz0navBTJs",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.4,
+      "position": [
+        112,
+        192
+      ],
+      "id": "4d4d6710-dd07-44aa-9e89-d386e602cede",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('To', ``, 'string') }}",
+        "subject": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Subject', ``, 'string') }}",
+        "message": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Message', ``, 'string') }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmailTool",
+      "typeVersion": 2.2,
+      "position": [
+        240,
+        192
+      ],
+      "id": "c6416f28-43a6-40ca-9e9a-69202c7c79be",
+      "name": "Send a message in Gmail",
+      "webhookId": "07086a46-3649-4f79-8c58-81a6a5f3b074",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "qY71TOofOrui6cgp",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "limit": 1,
+        "fields": [
+          "emailAddresses",
+          "names"
+        ],
+        "useQuery": true,
+        "query": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Query', ``, 'string') }}"
+      },
+      "type": "n8n-nodes-base.googleContactsTool",
+      "typeVersion": 1,
+      "position": [
+        368,
+        192
+      ],
+      "id": "84d72a58-2c41-4cda-ab68-216611659b0d",
+      "name": "Get many contacts in Google Contacts",
+      "credentials": {
+        "googleContactsOAuth2Api": {
+          "id": "0NXO0lh1L4pS19jK",
+          "name": "Google Contacts account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message in Gmail": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get many contacts in Google Contacts": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "6717d513-9799-4dcb-9b83-a8089accb947",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "cf064ccaaff45c2b45cccd14c3e391fac48eed101fc5d217b4a8c6902b2b1da5"
+  },
+  "nodeGroups": [],
+  "id": "wTYWhiAaunLqd8Fb",
+  "tags": []
+}
