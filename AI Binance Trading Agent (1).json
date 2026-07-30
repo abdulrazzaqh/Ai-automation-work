@@ -1,0 +1,965 @@
+{
+  "name": "AI Binance Trading Agent",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 15
+            }
+          ]
+        }
+      },
+      "id": "cecf8866-0457-465e-bee1-b3ccfa5c0a9a",
+      "name": "Every 15 Minutes",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "1",
+              "name": "apiSecret",
+              "value": "6tO9CxwXbtITJQd1rMV9vqklvNG8qXayI3MJA2WgzlnVfDVCgkQnLCjAz8RKNTAT",
+              "type": "string"
+            },
+            {
+              "id": "2",
+              "name": "cryptoPanicToken",
+              "value": "cea8cf64848c4be2946d98d562f9411b",
+              "type": "string"
+            },
+            {
+              "id": "3",
+              "name": "tradeBudgetUSDT",
+              "value": "12",
+              "type": "string"
+            },
+            {
+              "id": "4",
+              "name": "stopLossPct",
+              "value": "3",
+              "type": "string"
+            },
+            {
+              "id": "5",
+              "name": "takeProfitPct",
+              "value": "5",
+              "type": "string"
+            },
+            {
+              "id": "6",
+              "name": "dailyLossLimitUSDT",
+              "value": "3",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "f1d935cc-16ca-4943-839d-a0677393a5c1",
+      "name": "Trading Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        224,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "trading_positions"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "status",
+              "keyValue": "OPEN"
+            }
+          ]
+        },
+        "limit": 1
+      },
+      "id": "550c3079-ba3e-491b-a1ca-eb480fc95136",
+      "name": "Get Open Position",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        448,
+        96
+      ],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "daily_stats"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "trade_date",
+              "keyValue": "={{ $today.toFormat(\"yyyy-MM-dd\") }}"
+            }
+          ]
+        },
+        "limit": 1
+      },
+      "id": "61f83210-30cf-4842-94bc-545fa3b9aa73",
+      "name": "Get Daily Stats",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        672,
+        96
+      ],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst cfg = $('Trading Config').first().json;\nconst openPosItems = $('Get Open Position').all();\nconst statsItems = $('Get Daily Stats').all();\n\nconst openPos = openPosItems.find(i => i.json && i.json.status === 'OPEN' && i.json.symbol);\nconst statsRow = statsItems.find(i => i.json && i.json.trade_date);\n\nconst todayPnl = statsRow ? parseFloat(statsRow.json.total_pnl) || 0 : 0;\nconst tradeCount = statsRow ? parseInt(statsRow.json.trade_count) || 0 : 0;\nconst dailyLossLimit = parseFloat(cfg.dailyLossLimitUSDT) || 3;\nconst hasOpenPosition = !!openPos;\nconst dailyLossBreached = todayPnl <= -Math.abs(dailyLossLimit);\n\nreturn [{\n  json: {\n    shouldContinue: !dailyLossBreached,\n    hasOpenPosition,\n    dailyLossBreached,\n    todayPnl,\n    tradeCount,\n    openPosition: openPos ? openPos.json : null,\n    apiSecret: cfg.apiSecret,\n    cryptoPanicToken: cfg.cryptoPanicToken,\n    tradeBudgetUSDT: parseFloat(cfg.tradeBudgetUSDT) || 12,\n    stopLossPct: parseFloat(cfg.stopLossPct) || 3,\n    takeProfitPct: parseFloat(cfg.takeProfitPct) || 5,\n    dailyLossLimitUSDT: dailyLossLimit,\n  }\n}];\n      "
+      },
+      "id": "200bdb2d-7b5c-4178-8019-d3240462f802",
+      "name": "Check State & Limits",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        896,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "limit_ok",
+              "leftValue": "={{ $json.shouldContinue }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "b0ccbaa3-210c-43a0-823c-78ce123baa3e",
+      "name": "Daily Limit OK?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1120,
+        96
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "73fe797f-eb56-43c3-9366-a4217b997472",
+      "name": "Daily Loss Limit Reached - Stop",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1344,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "sltp",
+              "leftValue": "={{ $json.state.shouldClosePosition }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "70c09f5c-657b-474b-a9e9-dc1816bc418b",
+      "name": "SL/TP Triggered?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1344,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst crypto = require('crypto');\nconst data = $input.first().json;\nconst openPos = data.state.openPosition;\nconst symbol = openPos.symbol;\nconst quantity = openPos.quantity;\nconst apiSecret = data.apiSecret;\nconst timestamp = Date.now();\nconst qs = 'symbol=' + symbol + '&side=SELL&type=MARKET&quantity=' + quantity + '&timestamp=' + timestamp;\nconst signature = crypto.createHmac('sha256', apiSecret).update(qs).digest('hex');\nreturn [{\n  json: {\n    ...data,\n    sellRequest: { symbol, side: 'SELL', type: 'MARKET', quantity, timestamp, signature },\n  }\n}];\n      "
+      },
+      "id": "82e3a628-a75b-4d71-b250-aaf69a3989db",
+      "name": "Compute Sell Signature",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1568,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.binance.com/api/v3/order",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "specifyQuery": "json",
+        "jsonQuery": "={{ { symbol: $json.sellRequest.symbol, side: $json.sellRequest.side, type: $json.sellRequest.type, quantity: $json.sellRequest.quantity, timestamp: $json.sellRequest.timestamp, signature: $json.sellRequest.signature } }}",
+        "options": {}
+      },
+      "id": "6131812d-609b-4294-a979-4db12b3be87b",
+      "name": "Place Sell Order",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        1792,
+        0
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "9WwO7ZIQwqseGNcB",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst sellOrder = $input.first().json;\nconst preSell = $('Compute Sell Signature').first().json;\nconst openPos = preSell.state.openPosition;\n\nconst fills = sellOrder.fills || [];\nconst exitPrice = fills.length > 0\n  ? parseFloat(fills[0].price)\n  : parseFloat(sellOrder.cummulativeQuoteQty) / parseFloat(sellOrder.executedQty);\nconst entryPrice = parseFloat(openPos.entry_price);\nconst quantity = parseFloat(openPos.quantity || sellOrder.executedQty);\nconst pnl = (exitPrice - entryPrice) * quantity;\nconst now = new Date().toISOString();\nconst today = now.split('T')[0];\n\nreturn [{\n  json: {\n    originalOrderId: openPos.order_id,\n    exitPrice: exitPrice.toFixed(4),\n    pnl: pnl.toFixed(4),\n    pnlNumber: pnl,\n    symbol: openPos.symbol,\n    quantity: openPos.quantity,\n    entryPrice: openPos.entry_price,\n    aiReason: openPos.ai_reason || '',\n    closeReason: preSell.state.closeReason,\n    exitTime: now,\n    today,\n    todayPnl: (preSell.state.todayPnl || 0) + pnl,\n    tradeCount: (preSell.state.tradeCount || 0) + 1,\n  }\n}];\n      "
+      },
+      "id": "6b8cb88d-c42c-43c9-9876-60fec4bf5602",
+      "name": "Prepare Close Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2016,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "trading_positions"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "order_id",
+              "keyValue": "={{ $json.originalOrderId }}"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "status": "CLOSED",
+            "exit_price": "={{ $json.exitPrice }}",
+            "exit_time": "={{ $json.exitTime }}",
+            "pnl_usdt": "={{ $json.pnl }}"
+          },
+          "schema": [
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "exit_price",
+              "displayName": "exit_price",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "exit_time",
+              "displayName": "exit_time",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "pnl_usdt",
+              "displayName": "pnl_usdt",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "407e4621-7968-4684-baf1-beeccc5c0ed8",
+      "name": "Update Position Closed",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        2240,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "dataTableId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "trading_log"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "symbol": "={{ $json.symbol }}",
+            "action": "SELL",
+            "entry_price": "={{ $json.entryPrice }}",
+            "exit_price": "={{ $json.exitPrice }}",
+            "quantity": "={{ $json.quantity }}",
+            "pnl_usdt": "={{ $json.pnl }}",
+            "trade_date": "={{ $json.today }}",
+            "trade_time": "={{ $json.exitTime }}",
+            "ai_reason": "={{ $json.closeReason }}"
+          },
+          "schema": [
+            {
+              "id": "symbol",
+              "displayName": "symbol",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "action",
+              "displayName": "action",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "entry_price",
+              "displayName": "entry_price",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "exit_price",
+              "displayName": "exit_price",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "quantity",
+              "displayName": "quantity",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "pnl_usdt",
+              "displayName": "pnl_usdt",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "trade_date",
+              "displayName": "trade_date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "trade_time",
+              "displayName": "trade_time",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "ai_reason",
+              "displayName": "ai_reason",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "4d248ea1-e96c-4a91-902e-983d510b55c9",
+      "name": "Log Sell Trade",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        2464,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "daily_stats"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "trade_date",
+              "keyValue": "={{ $json.today }}"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "trade_date": "={{ $json.today }}",
+            "total_pnl": "={{ $json.todayPnl }}",
+            "trade_count": "={{ $json.tradeCount }}"
+          },
+          "schema": [
+            {
+              "id": "trade_date",
+              "displayName": "trade_date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "total_pnl",
+              "displayName": "total_pnl",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "trade_count",
+              "displayName": "trade_count",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": false
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "8c6e2aea-1b97-464d-b3e7-2710cc5ab722",
+      "name": "Update Daily Stats",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        2688,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "should_buy",
+              "leftValue": "={{ $json.shouldBuy }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "2b61d150-611e-41ed-94d8-6ac262850764",
+      "name": "Should Buy?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1568,
+        288
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst crypto = require('crypto');\nconst data = $input.first().json;\nconst decision = data.decision;\nconst symbol = decision.symbol;\nconst tradeBudget = data.tradeBudgetUSDT;\nconst apiSecret = data.apiSecret;\nconst timestamp = Date.now();\n// quoteOrderQty = spend exactly this many USDT\nconst budgetStr = tradeBudget.toFixed(2);\nconst qs = 'symbol=' + symbol + '&side=BUY&type=MARKET&quoteOrderQty=' + budgetStr + '&timestamp=' + timestamp;\nconst signature = crypto.createHmac('sha256', apiSecret).update(qs).digest('hex');\nreturn [{\n  json: {\n    ...data,\n    buyRequest: { symbol, side: 'BUY', type: 'MARKET', quoteOrderQty: budgetStr, timestamp, signature },\n  }\n}];\n      "
+      },
+      "id": "81958613-4c2b-4a64-a2b8-208ce09031f0",
+      "name": "Compute Buy Signature",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1792,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.binance.com/api/v3/order",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "specifyQuery": "json",
+        "jsonQuery": "={{ { symbol: $json.buyRequest.symbol, side: $json.buyRequest.side, type: $json.buyRequest.type, quoteOrderQty: $json.buyRequest.quoteOrderQty, timestamp: $json.buyRequest.timestamp, signature: $json.buyRequest.signature } }}",
+        "options": {}
+      },
+      "id": "bc596796-02b6-4185-94c7-eb16ab0bd381",
+      "name": "Place Buy Order",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        2016,
+        192
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "9WwO7ZIQwqseGNcB",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst orderResult = $input.first().json;\nconst buyData = $('Compute Buy Signature').first().json;\nconst decision = buyData.decision;\nconst stopLossPct = buyData.stopLossPct;\nconst takeProfitPct = buyData.takeProfitPct;\n\nconst fills = orderResult.fills || [];\nconst fillPrice = fills.length > 0\n  ? parseFloat(fills[0].price)\n  : parseFloat((buyData.markets[decision.symbol] && buyData.markets[decision.symbol].currentPrice) || 0);\nconst quantity = orderResult.executedQty;\nconst now = new Date().toISOString();\n\nconst stopLoss = fillPrice * (1 - stopLossPct / 100);\nconst takeProfit = fillPrice * (1 + takeProfitPct / 100);\n\nreturn [{\n  json: {\n    symbol: decision.symbol,\n    side: 'BUY',\n    orderId: String(orderResult.orderId),\n    entryPrice: fillPrice.toFixed(4),\n    quantity: String(quantity),\n    stopLoss: stopLoss.toFixed(4),\n    takeProfit: takeProfit.toFixed(4),\n    aiReason: decision.reason,\n    confidence: decision.confidence,\n    entryTime: now,\n  }\n}];\n      "
+      },
+      "id": "dca1723b-55bf-46fd-b561-b6b83878b98a",
+      "name": "Extract Fill & SL/TP",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2240,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "dataTableId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "trading_positions"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "symbol": "={{ $json.symbol }}",
+            "side": "={{ $json.side }}",
+            "entry_price": "={{ $json.entryPrice }}",
+            "quantity": "={{ $json.quantity }}",
+            "order_id": "={{ $json.orderId }}",
+            "stop_loss": "={{ $json.stopLoss }}",
+            "take_profit": "={{ $json.takeProfit }}",
+            "status": "OPEN",
+            "entry_time": "={{ $json.entryTime }}",
+            "ai_reason": "={{ $json.aiReason }}"
+          },
+          "schema": [
+            {
+              "id": "symbol",
+              "displayName": "symbol",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "side",
+              "displayName": "side",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "entry_price",
+              "displayName": "entry_price",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "quantity",
+              "displayName": "quantity",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "order_id",
+              "displayName": "order_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "stop_loss",
+              "displayName": "stop_loss",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "take_profit",
+              "displayName": "take_profit",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "entry_time",
+              "displayName": "entry_time",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "ai_reason",
+              "displayName": "ai_reason",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "55a6ed15-7623-4e4e-958b-5e7daa1dbbcb",
+      "name": "Save Open Position",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        2464,
+        192
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "91c83fae-e375-4b23-b591-e0824ea7b21c",
+      "name": "HOLD - No Trade This Cycle",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1792,
+        384
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Every 15 Minutes": {
+      "main": [
+        [
+          {
+            "node": "Trading Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Trading Config": {
+      "main": [
+        [
+          {
+            "node": "Get Open Position",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Open Position": {
+      "main": [
+        [
+          {
+            "node": "Get Daily Stats",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Daily Stats": {
+      "main": [
+        [
+          {
+            "node": "Check State & Limits",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check State & Limits": {
+      "main": [
+        [
+          {
+            "node": "Daily Limit OK?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Daily Limit OK?": {
+      "main": [
+        [
+          {
+            "node": "SL/TP Triggered?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Daily Loss Limit Reached - Stop",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SL/TP Triggered?": {
+      "main": [
+        [
+          {
+            "node": "Compute Sell Signature",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Should Buy?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compute Sell Signature": {
+      "main": [
+        [
+          {
+            "node": "Place Sell Order",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Place Sell Order": {
+      "main": [
+        [
+          {
+            "node": "Prepare Close Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Close Data": {
+      "main": [
+        [
+          {
+            "node": "Update Position Closed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Position Closed": {
+      "main": [
+        [
+          {
+            "node": "Log Sell Trade",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Sell Trade": {
+      "main": [
+        [
+          {
+            "node": "Update Daily Stats",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Should Buy?": {
+      "main": [
+        [
+          {
+            "node": "Compute Buy Signature",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "HOLD - No Trade This Cycle",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compute Buy Signature": {
+      "main": [
+        [
+          {
+            "node": "Place Buy Order",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Place Buy Order": {
+      "main": [
+        [
+          {
+            "node": "Extract Fill & SL/TP",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Fill & SL/TP": {
+      "main": [
+        [
+          {
+            "node": "Save Open Position",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "errorWorkflow": "A6Ieo3tEPaugOre6"
+  },
+  "versionId": "64e4528f-e60e-4b67-9d4d-d12ef5489dc7",
+  "meta": {
+    "instanceId": "5e584c9d5669559353c17ac42554a5b5f115cbe7fac1fd96bf42014275391e34"
+  },
+  "nodeGroups": [],
+  "id": "epP9KceORS3maPDo",
+  "tags": []
+}
