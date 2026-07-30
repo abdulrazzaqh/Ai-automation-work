@@ -1,0 +1,238 @@
+{
+  "name": "workflow for invoice",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -944,
+        -64
+      ],
+      "id": "aceb07f4-6d6b-4926-8ad3-ddb1a02a4abe",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1beYB2929d_uLQ8GpwXNOLlR5zfU_LaSJYPCHpF6mlYI",
+          "mode": "list",
+          "cachedResultName": "dummy_invoice (1)",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1beYB2929d_uLQ8GpwXNOLlR5zfU_LaSJYPCHpF6mlYI/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1703454994,
+          "mode": "list",
+          "cachedResultName": "Invoice",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1beYB2929d_uLQ8GpwXNOLlR5zfU_LaSJYPCHpF6mlYI/edit#gid=1703454994"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -720,
+        -64
+      ],
+      "id": "2e460466-de38-474e-bc30-0e554c3f44ff",
+      "name": "Get row(s) in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "n4KhTuiKACpvDMp0",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "d7e62631-fd2e-45ca-a762-5f2dca951484",
+              "leftValue": "={{ $json.col_6 }}",
+              "rightValue": "Paid",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.3,
+      "position": [
+        -496,
+        -64
+      ],
+      "id": "fea6caa2-6c02-405d-98c8-b97bec930cd0",
+      "name": "Filter"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "021078c0-4cef-47b9-807e-ead23a96987f",
+              "leftValue": "={{ $json.col_6 }}",
+              "rightValue": "Unpaid",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "1a62eff1-3aa5-4b82-8b67-89cb4853e326",
+              "leftValue": "",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -272,
+        -64
+      ],
+      "id": "28f92a64-12bd-4a1e-b215-de547a579682",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.col_3 }}",
+        "subject": "Tour invoice is due",
+        "message": "=Hi {{ $json['DUMMY INVOICE - CUSTOMER LIST'] }} your invoice is due {{ $json.col_8 }}                      \nRgards,\nCustomer service team",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        -48,
+        -160
+      ],
+      "id": "463676bb-8c44-4451-831f-5b95bf911887",
+      "name": "Send a message",
+      "webhookId": "0dd0eb28-ad33-4a56-93c4-4349122464bf",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "qY71TOofOrui6cgp",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.col_3 }}",
+        "subject": "Important; your Invoice is past due",
+        "message": "=Hi,  {{ $json['DUMMY INVOICE - CUSTOMER LIST'] }} This is to inform you that your inoice is past due, please pay your invoice ASAp to avoide further penalty\nRegards,\nCustomer service team",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        -48,
+        32
+      ],
+      "id": "f2ea07d2-0822-4157-bc5a-8abba73a2374",
+      "name": "Send a message1",
+      "webhookId": "eaff55d3-2fff-4e1a-8a9a-d2e6b7e13c43",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "qY71TOofOrui6cgp",
+          "name": "Gmail account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Get row(s) in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet": {
+      "main": [
+        [
+          {
+            "node": "Filter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send a message1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "0ede4496-3fa8-4a77-9c8e-c6c42f25a1ba",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "cf064ccaaff45c2b45cccd14c3e391fac48eed101fc5d217b4a8c6902b2b1da5"
+  },
+  "nodeGroups": [],
+  "id": "ywbuUkwyzDmyjRPl",
+  "tags": []
+}
