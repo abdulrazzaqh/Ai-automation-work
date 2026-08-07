@@ -1,0 +1,762 @@
+{
+  "name": "Lead Capture → Qualification → CRM",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## 🟢 TRIGGER\n**Webhook Node**\n\nEntry point for the whole workflow. Connect this URL to:\n- Website contact/inquiry form\n- Facebook Lead Ads\n- WhatsApp Business API\n\nFires instantly when a new lead submits their details.",
+        "height": 220,
+        "width": 240,
+        "color": 4
+      },
+      "id": "sticky_1",
+      "name": "Note: 1. Webhook - Lead In",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -1420,
+        40
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 📋 STEP 1\n**Capture Raw Lead Data**\n\nNormalizes the incoming payload into clean fields:\n`name, phone, email, budget, location, propertyType, source, timestamp`\n\nEverything downstream reads from these fields — keep names consistent with your form.",
+        "height": 220,
+        "width": 240,
+        "color": 4
+      },
+      "id": "sticky_2",
+      "name": "Note: 2. Capture Raw Lead Data",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -1180,
+        40
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 🤖 STEP 2\n**AI Qualification (Claude)**\n\nSends the lead's message + budget to Claude.\n\nPrompt asks it to:\n- Classify as **Hot / Warm / Cold**\n- Summarize intent in 1 line\n\nReturns raw JSON in the response body — parsed in the next node.",
+        "height": 220,
+        "width": 240,
+        "color": 3
+      },
+      "id": "sticky_3",
+      "name": "Note: 3. AI Qualification (Claude)",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -940,
+        40
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 🔧 Helper\n**Parse AI Output**\n\nExtracts `score` and `summary` from Claude's JSON reply and merges them back onto the original lead record.\n\nFalls back to \"Warm\" + a manual-review note if the AI response isn't valid JSON, so nothing gets silently dropped.",
+        "height": 220,
+        "width": 240,
+        "color": 3
+      },
+      "id": "sticky_4",
+      "name": "Note: 4. Parse AI Output",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -700,
+        40
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 🔀 STEP 3\n**Conditional Routing (Switch)**\n\nRoutes the lead down 1 of 3 paths based on `score`:\n- **Hot** → instant alert + call link\n- **Warm** → nurture sequence (Workflow 2)\n- **Cold** → newsletter list only\n\nAll 3 branches reconverge before the CRM push.",
+        "height": 200,
+        "width": 240,
+        "color": 5
+      },
+      "id": "sticky_5",
+      "name": "Note: 5. Route by Lead Score",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -460,
+        -180
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 🔥 HOT branch\n**Generate Call Link**\n\nBuilds a pre-filled Cal.com/Calendly booking URL using the lead's name + email, so the agent can send it straight in the Slack alert.",
+        "height": 180,
+        "width": 220,
+        "color": 2
+      },
+      "id": "sticky_6",
+      "name": "Note: 6a. Generate Call Link",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -220,
+        -140
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 🔥 STEP 3a (Hot)\n**Slack Instant Alert**\n\nPosts to `#hot-leads` immediately: name, phone, budget, location, AI summary, and the booking link.\n\nGoal: agent sees and can act on a hot lead within minutes.",
+        "height": 180,
+        "width": 220,
+        "color": 2
+      },
+      "id": "sticky_7",
+      "name": "Note: 6b. Slack Instant Alert",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        20,
+        -140
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 🌤 STEP 3b (Warm)\n**Send to Nurture Sequence**\n\nForwards the lead to Workflow 2 via webhook — a drip sequence (email/WhatsApp over days/weeks) instead of an instant push.\n\nSwap the URL once Workflow 2 exists.",
+        "height": 180,
+        "width": 220,
+        "color": 6
+      },
+      "id": "sticky_8",
+      "name": "Note: 6c. Send to Workflow 2 (Nurture)",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -220,
+        60
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## ❄️ STEP 3c (Cold)\n**Add to Newsletter List**\n\nLow-intent leads skip active outreach and just get appended to a monthly newsletter sheet — no agent time spent chasing them.",
+        "height": 180,
+        "width": 220,
+        "color": 8
+      },
+      "id": "sticky_9",
+      "name": "Note: 6d. Add to Newsletter List",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -220,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 🗂 STEP 4\n**CRM Push**\n\nEvery lead — regardless of score — gets logged here with score, source, and timestamp.\n\nThis is your single source of truth. Swap for Airtable/HubSpot if preferred.",
+        "height": 220,
+        "width": 240,
+        "color": 4
+      },
+      "id": "sticky_10",
+      "name": "Note: 7. CRM Push (Google Sheets)",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        200,
+        40
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 💬 STEP 5\n**Instant Auto-Reply**\n\nSends the lead a personalized WhatsApp message acknowledging their inquiry and referencing their location + budget, so they hear back within seconds even before an agent responds.",
+        "height": 220,
+        "width": 240,
+        "color": 4
+      },
+      "id": "sticky_11",
+      "name": "Note: 8. Instant Auto-Reply (WhatsApp)",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        440,
+        40
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 🔔 STEP 6\n**Internal Notification**\n\nPosts a summary of every logged lead to `#lead-notifications` so the agent has a running feed and never misses one — this is the general log, separate from the urgent Hot alert in Step 3a.",
+        "height": 220,
+        "width": 240,
+        "color": 4
+      },
+      "id": "sticky_12",
+      "name": "Note: 9. Internal Notification",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        680,
+        40
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "lead-capture",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "webhook_1",
+      "name": "1. Webhook - Lead In",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -1400,
+        300
+      ],
+      "webhookId": "lead-capture"
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a1",
+              "name": "name",
+              "value": "={{ $json.body.name }}",
+              "type": "string"
+            },
+            {
+              "id": "a2",
+              "name": "phone",
+              "value": "={{ $json.body.phone }}",
+              "type": "string"
+            },
+            {
+              "id": "a3",
+              "name": "email",
+              "value": "={{ $json.body.email }}",
+              "type": "string"
+            },
+            {
+              "id": "a4",
+              "name": "budget",
+              "value": "={{ $json.body.budget }}",
+              "type": "string"
+            },
+            {
+              "id": "a5",
+              "name": "location",
+              "value": "={{ $json.body.location }}",
+              "type": "string"
+            },
+            {
+              "id": "a6",
+              "name": "propertyType",
+              "value": "={{ $json.body.propertyType }}",
+              "type": "string"
+            },
+            {
+              "id": "a7",
+              "name": "source",
+              "value": "={{ $json.body.source || 'website' }}",
+              "type": "string"
+            },
+            {
+              "id": "a8",
+              "name": "timestamp",
+              "value": "={{ $now.toISO() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "set_1",
+      "name": "2. Capture Raw Lead Data",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1160,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            },
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  model: \"claude-sonnet-4-6\",\n  max_tokens: 300,\n  messages: [{\n    role: \"user\",\n    content: `You are a real estate lead qualification assistant. Based on this lead's details, classify them as Hot, Warm, or Cold and summarize their intent in 1 line. Respond ONLY with valid JSON in this exact format: {\"score\": \"Hot|Warm|Cold\", \"summary\": \"one line summary\"}.\\n\\nLead details:\\nName: ${$json.name}\\nBudget: ${$json.budget}\\nLocation preference: ${$json.location}\\nProperty type: ${$json.propertyType}`\n  }]\n}) }}",
+        "options": {}
+      },
+      "id": "http_ai_1",
+      "name": "3. AI Qualification (Claude)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -920,
+        300
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_WITH_CREDENTIAL_ID",
+          "name": "Anthropic API Key Header"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $input.first().json.content[0].text;\nlet parsed;\ntry {\n  parsed = JSON.parse(raw);\n} catch (e) {\n  parsed = { score: 'Warm', summary: 'Could not parse AI response - manual review needed' };\n}\n\nconst lead = $('2. Capture Raw Lead Data').first().json;\n\nreturn [{\n  json: {\n    ...lead,\n    score: parsed.score,\n    summary: parsed.summary\n  }\n}];"
+      },
+      "id": "code_1",
+      "name": "4. Parse AI Output",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -680,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "id": "c1",
+                    "leftValue": "={{ $json.score }}",
+                    "rightValue": "Hot",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Hot"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "id": "c2",
+                    "leftValue": "={{ $json.score }}",
+                    "rightValue": "Warm",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Warm"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "id": "c3",
+                    "leftValue": "={{ $json.score }}",
+                    "rightValue": "Cold",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Cold"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "id": "switch_1",
+      "name": "5. Route by Lead Score",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        -440,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "b1",
+              "name": "callLink",
+              "value": "=https://cal.com/your-agency/consult?name={{ encodeURIComponent($json.name) }}&email={{ encodeURIComponent($json.email) }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "set_calllink",
+      "name": "6a. Generate Call Link",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -200,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "hot-leads"
+        },
+        "text": "=🔥 *HOT LEAD*: {{ $json.name }} | {{ $json.phone }} | Budget: {{ $json.budget }} | {{ $json.location }}\nSummary: {{ $json.summary }}\nBook a call: {{ $json.callLink }}",
+        "otherOptions": {}
+      },
+      "id": "slack_hot",
+      "name": "6b. Slack Instant Alert",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        40,
+        120
+      ],
+      "credentials": {
+        "slackApi": {
+          "id": "REPLACE_WITH_CREDENTIAL_ID",
+          "name": "Slack account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:5678/webhook/nurture-sequence",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "id": "http_warm",
+      "name": "6c. Send to Workflow 2 (Nurture)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -200,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "REPLACE_WITH_SHEET_ID"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Newsletter List"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "name": "={{ $json.name }}",
+            "email": "={{ $json.email }}",
+            "location": "={{ $json.location }}",
+            "date_added": "={{ $json.timestamp }}"
+          }
+        },
+        "options": {}
+      },
+      "id": "sheets_cold",
+      "name": "6d. Add to Newsletter List",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        -200,
+        480
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "REPLACE_WITH_CREDENTIAL_ID",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "REPLACE_WITH_SHEET_ID"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Leads CRM"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "name": "={{ $json.name }}",
+            "phone": "={{ $json.phone }}",
+            "email": "={{ $json.email }}",
+            "budget": "={{ $json.budget }}",
+            "location": "={{ $json.location }}",
+            "propertyType": "={{ $json.propertyType }}",
+            "score": "={{ $json.score }}",
+            "summary": "={{ $json.summary }}",
+            "source": "={{ $json.source }}",
+            "timestamp": "={{ $json.timestamp }}"
+          }
+        },
+        "options": {}
+      },
+      "id": "sheets_crm",
+      "name": "7. CRM Push (Google Sheets)",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        220,
+        300
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "REPLACE_WITH_CREDENTIAL_ID",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "send",
+        "phoneNumberId": "REPLACE_WITH_WHATSAPP_PHONE_ID",
+        "recipientPhoneNumber": "={{ $json.phone }}",
+        "textBody": "=Thanks {{ $json.name }}, I'm matching properties in {{ $json.location }} for your budget ({{ $json.budget }}) — here's what's available now: [link]",
+        "options": {}
+      },
+      "id": "whatsapp_reply",
+      "name": "8. Instant Auto-Reply (WhatsApp)",
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1,
+      "position": [
+        460,
+        300
+      ],
+      "credentials": {
+        "whatsAppApi": {
+          "id": "REPLACE_WITH_CREDENTIAL_ID",
+          "name": "WhatsApp account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "lead-notifications"
+        },
+        "text": "=New lead logged: {{ $json.name }} ({{ $json.score }}) — {{ $json.summary }} | {{ $json.phone }} | {{ $json.email }}",
+        "otherOptions": {}
+      },
+      "id": "slack_internal",
+      "name": "9. Internal Notification",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        700,
+        300
+      ],
+      "credentials": {
+        "slackApi": {
+          "id": "REPLACE_WITH_CREDENTIAL_ID",
+          "name": "Slack account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "1. Webhook - Lead In": {
+      "main": [
+        [
+          {
+            "node": "2. Capture Raw Lead Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "2. Capture Raw Lead Data": {
+      "main": [
+        [
+          {
+            "node": "3. AI Qualification (Claude)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "3. AI Qualification (Claude)": {
+      "main": [
+        [
+          {
+            "node": "4. Parse AI Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "4. Parse AI Output": {
+      "main": [
+        [
+          {
+            "node": "5. Route by Lead Score",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "5. Route by Lead Score": {
+      "main": [
+        [
+          {
+            "node": "6a. Generate Call Link",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "6c. Send to Workflow 2 (Nurture)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "6d. Add to Newsletter List",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "6a. Generate Call Link": {
+      "main": [
+        [
+          {
+            "node": "6b. Slack Instant Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "6b. Slack Instant Alert": {
+      "main": [
+        [
+          {
+            "node": "7. CRM Push (Google Sheets)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "6c. Send to Workflow 2 (Nurture)": {
+      "main": [
+        [
+          {
+            "node": "7. CRM Push (Google Sheets)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "6d. Add to Newsletter List": {
+      "main": [
+        [
+          {
+            "node": "7. CRM Push (Google Sheets)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "7. CRM Push (Google Sheets)": {
+      "main": [
+        [
+          {
+            "node": "8. Instant Auto-Reply (WhatsApp)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "8. Instant Auto-Reply (WhatsApp)": {
+      "main": [
+        [
+          {
+            "node": "9. Internal Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
