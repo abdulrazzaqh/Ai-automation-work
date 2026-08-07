@@ -1,0 +1,736 @@
+{
+  "name": "LinkedIn Lead Scraper + Enricher",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 8
+            }
+          ]
+        }
+      },
+      "id": "34cfd5f4-7646-48d3-9d31-8306fb006822",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -3584,
+        0
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "513aeb94-31e6-4f05-8aa7-d7ebe8598d7c",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -3584,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "cfg-1",
+              "name": "jobTitle",
+              "type": "string",
+              "value": "Head of Operations"
+            },
+            {
+              "id": "cfg-2",
+              "name": "industry",
+              "type": "string",
+              "value": "Software"
+            },
+            {
+              "id": "cfg-3",
+              "name": "location",
+              "type": "string",
+              "value": "United States"
+            },
+            {
+              "id": "cfg-4",
+              "name": "companySizeMin",
+              "type": "number",
+              "value": 11
+            },
+            {
+              "id": "cfg-5",
+              "name": "companySizeMax",
+              "type": "number",
+              "value": 500
+            },
+            {
+              "id": "cfg-6",
+              "name": "icpDescription",
+              "type": "string",
+              "value": "Ops or automation decision-makers at 11-500 person B2B software companies who would plausibly outsource workflow automation (n8n, Zapier, Make) work."
+            },
+            {
+              "id": "cfg-7",
+              "name": "scoreThreshold",
+              "type": "number",
+              "value": 7
+            },
+            {
+              "id": "cfg-8",
+              "name": "maxResults",
+              "type": "number",
+              "value": 50
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "91b2a391-f5a6-4e49-b7ea-261d70912fef",
+      "name": "Set ICP Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -3360,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.phantombuster.com/api/v2/agents/launch",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Phantombuster-Key-1",
+              "value": "={{ $credentials.phantomBusterApi.apiKey }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"id\": \"YOUR_PHANTOM_AGENT_ID\",\n  \"argument\": {\n    \"search\": \"{{ $json.jobTitle }} {{ $json.industry }} {{ $json.location }}\",\n    \"numberOfResultsPerLaunch\": {{ $json.maxResults }}\n  }\n}",
+        "options": {}
+      },
+      "id": "46a4dbea-c746-42a0-bd0e-8a5433f892d1",
+      "name": "Launch LinkedIn Scraper (PhantomBuster)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -3136,
+        96
+      ],
+      "notes": "Swap for Apify or Proxycurl/ScrapIn HTTP call if preferred. See README for alternatives."
+    },
+    {
+      "parameters": {
+        "amount": 90
+      },
+      "id": "4a8c36fb-6058-401a-9b5e-abdd43b3f1b0",
+      "name": "Wait For Scrape Completion",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -2912,
+        96
+      ],
+      "webhookId": "623a4cda-e4be-4b32-91c6-f3c915b3f2e6"
+    },
+    {
+      "parameters": {
+        "url": "=https://api.phantombuster.com/api/v2/containers/fetch-result-object?id={{ $json.containerId }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Phantombuster-Key-1",
+              "value": "={{ $credentials.phantomBusterApi.apiKey }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "4819eb71-411e-4e98-b24f-133daeb6fd1c",
+      "name": "Fetch Scrape Results",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -2688,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "resultObject",
+        "options": {}
+      },
+      "id": "167248c0-0106-4b2f-b169-e5a329c48c52",
+      "name": "Split Out Profiles",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        -2464,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://api.apollo.io/v1/people/match",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "linkedin_url",
+              "value": "={{ $json.profileUrl }}"
+            },
+            {
+              "name": "api_key",
+              "value": "={{ $credentials.apolloApi.apiKey }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "90a7d3db-4afb-422c-8771-48aa6c88e20a",
+      "name": "Enrich Email (Apollo.io)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -2240,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://api.proxycurl.com/v2/linkedin/company",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "url",
+              "value": "={{ $json.companyUrl }}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $credentials.proxycurlApi.apiKey }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "e5ed2abe-dd2e-44df-8bd5-0503d28c9f5c",
+      "name": "Enrich Company (Proxycurl)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -2240,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "id": "fb3fabbc-ebfc-4141-8f84-836faf984ae6",
+      "name": "Merge Profile + Company Data",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        -2016,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "={{ $credentials.anthropicApi.apiKey }}"
+            },
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            },
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"claude-sonnet-4-6\",\n  \"max_tokens\": 300,\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"You are scoring a B2B lead against an ICP.\\n\\nICP: {{ $json.icpDescription }}\\n\\nLead profile:\\nName: {{ $json.fullName }}\\nTitle: {{ $json.title }}\\nCompany: {{ $json.companyName }}\\nCompany size: {{ $json.companySize }}\\nIndustry: {{ $json.companyIndustry }}\\nHeadline: {{ $json.headline }}\\n\\nRespond ONLY with JSON, no markdown fences: {\\\"score\\\": <1-10 integer>, \\\"reason\\\": \\\"<one sentence>\\\"}\"\n    }\n  ]\n}",
+        "options": {}
+      },
+      "id": "d907f5aa-6cf0-4fe6-99ed-5d93ef623512",
+      "name": "Score Lead vs ICP (Claude)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1792,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse the Claude scoring response and attach it to the lead item\nconst items = $input.all();\nreturn items.map(item => {\n  let parsed = { score: 0, reason: 'Parse failed' };\n  try {\n    const raw = item.json.content?.[0]?.text ?? '{}';\n    const cleaned = raw.replace(/```json|```/g, '').trim();\n    parsed = JSON.parse(cleaned);\n  } catch (e) {\n    // leave default on failure, route to error branch downstream\n  }\n  return {\n    json: {\n      ...item.json,\n      leadScore: parsed.score,\n      scoreReason: parsed.reason\n    }\n  };\n});"
+      },
+      "id": "127f6f5c-0b48-4644-93b1-173a4501cb8c",
+      "name": "Parse Score",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1568,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "cond-1",
+              "leftValue": "={{ $json.leadScore }}",
+              "rightValue": "={{ $('Set ICP Config').item.json.scoreThreshold }}",
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "0fbb8584-9372-4bfc-8ebb-e502d9481a43",
+      "name": "IF Score >= Threshold",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -1344,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "lookup",
+        "documentId": {
+          "mode": "list",
+          "value": "YOUR_GOOGLE_SHEET_ID"
+        }
+      },
+      "id": "58252303-2113-4b63-b559-29bf51eaa561",
+      "name": "Dedup Check (Google Sheets)",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        -1120,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "cond-2",
+              "leftValue": "={{ $json.isEmpty }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "9e315213-3911-415e-b3c8-d1e454349dab",
+      "name": "IF Not Duplicate",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -896,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "mode": "list",
+          "value": "YOUR_GOOGLE_SHEET_ID"
+        },
+        "sheetName": {
+          "mode": "list",
+          "value": "Leads"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Name": "={{ $json.fullName }}",
+            "Title": "={{ $json.title }}",
+            "Company": "={{ $json.companyName }}",
+            "Email": "={{ $json.email }}",
+            "LinkedIn URL": "={{ $json.profileUrl }}",
+            "Company Size": "={{ $json.companySize }}",
+            "Score": "={{ $json.leadScore }}",
+            "Reason": "={{ $json.scoreReason }}",
+            "Date Added": "={{ $now.toISO() }}"
+          }
+        },
+        "options": {}
+      },
+      "id": "0cf72bc9-ddac-41ab-bf02-6f6584ee6a5f",
+      "name": "Append Lead to Sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        -672,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "cond-3",
+              "leftValue": "={{ $json.leadScore }}",
+              "rightValue": 9,
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "f8980951-b246-4d54-b483-65db29c6ba60",
+      "name": "IF Hot Lead (9-10)",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -448,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "mode": "list",
+          "value": "YOUR_SLACK_CHANNEL_ID"
+        },
+        "text": "=🔥 Hot lead found: *{{ $json.fullName }}* ({{ $json.title }} @ {{ $json.companyName }})\\nScore: {{ $json.leadScore }}/10 — {{ $json.scoreReason }}\\nLinkedIn: {{ $json.profileUrl }}",
+        "otherOptions": {}
+      },
+      "id": "d101eeff-a828-4165-9947-ab73c3062050",
+      "name": "Notify Slack (Hot Lead)",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [
+        -224,
+        0
+      ],
+      "webhookId": "e5491725-8842-43a6-97d7-630756ee3e8d"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "mode": "list",
+          "value": "YOUR_GOOGLE_SHEET_ID"
+        },
+        "sheetName": {
+          "mode": "list",
+          "value": "Errors"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Item": "={{ JSON.stringify($json) }}",
+            "Timestamp": "={{ $now.toISO() }}",
+            "Node": "Score Lead vs ICP (Claude)"
+          }
+        },
+        "options": {}
+      },
+      "id": "bd58993c-b5ae-4a77-89fc-9bf6bc771e28",
+      "name": "Log Scoring Failure",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        -3584,
+        416
+      ]
+    },
+    {
+      "parameters": {
+        "amount": 3
+      },
+      "id": "84269b52-f613-4ab1-9466-00a3c1450560",
+      "name": "Rate Limit Wait",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -1120,
+        192
+      ],
+      "webhookId": "cec66759-7d62-4378-9f12-8ebf5e9f3f50"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Set ICP Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Set ICP Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set ICP Config": {
+      "main": [
+        [
+          {
+            "node": "Launch LinkedIn Scraper (PhantomBuster)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Launch LinkedIn Scraper (PhantomBuster)": {
+      "main": [
+        [
+          {
+            "node": "Wait For Scrape Completion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait For Scrape Completion": {
+      "main": [
+        [
+          {
+            "node": "Fetch Scrape Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Scrape Results": {
+      "main": [
+        [
+          {
+            "node": "Split Out Profiles",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out Profiles": {
+      "main": [
+        [
+          {
+            "node": "Enrich Email (Apollo.io)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Enrich Company (Proxycurl)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enrich Email (Apollo.io)": {
+      "main": [
+        [
+          {
+            "node": "Merge Profile + Company Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enrich Company (Proxycurl)": {
+      "main": [
+        [
+          {
+            "node": "Merge Profile + Company Data",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge Profile + Company Data": {
+      "main": [
+        [
+          {
+            "node": "Score Lead vs ICP (Claude)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Score Lead vs ICP (Claude)": {
+      "main": [
+        [
+          {
+            "node": "Parse Score",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Score": {
+      "main": [
+        [
+          {
+            "node": "IF Score >= Threshold",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Score >= Threshold": {
+      "main": [
+        [
+          {
+            "node": "Dedup Check (Google Sheets)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Rate Limit Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Dedup Check (Google Sheets)": {
+      "main": [
+        [
+          {
+            "node": "IF Not Duplicate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Not Duplicate": {
+      "main": [
+        [
+          {
+            "node": "Append Lead to Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append Lead to Sheet": {
+      "main": [
+        [
+          {
+            "node": "IF Hot Lead (9-10)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Hot Lead (9-10)": {
+      "main": [
+        [
+          {
+            "node": "Notify Slack (Hot Lead)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "56305909-9c56-4419-97e4-5d9745840dab",
+  "meta": {
+    "instanceId": "cf064ccaaff45c2b45cccd14c3e391fac48eed101fc5d217b4a8c6902b2b1da5"
+  },
+  "nodeGroups": [],
+  "id": "3JvOHFwGXFwYYPMq",
+  "tags": []
+}
